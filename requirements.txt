@@ -1,0 +1,12 @@
+streamlit
+langchain-community
+langchain-google-genai
+langchain-core
+faiss-cpu
+requests
+python-dotenv
+fastapi
+uvicorn
+python-dotenv
+langchain-google-genai
+langchain-core

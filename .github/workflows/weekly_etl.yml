@@ -1,0 +1,56 @@
+name: Weekly Clinical Trials ETL
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every Sunday
+    - cron: '0 0 * * 0'
+  # Allows you to click "Run workflow" manually to test it immediately
+  workflow_dispatch:
+
+# CRITICAL: This gives the bot permission to save the new database to your repo
+permissions:
+  contents: write
+
+jobs:
+  update-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Get your code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. Install Dependencies
+      - name: Install Libraries
+        run: |
+          pip install --upgrade pip
+          # Installs requests, langchain, faiss-cpu, etc.
+          pip install -r requirements.txt
+          # Extra safety check to ensure FAISS is installed
+          pip install faiss-cpu sentence-transformers
+
+      # 4. Run your ETL Script
+      - name: Run ETL Pipeline
+        run: python etl.py
+
+      # 5. Commit and Push Changes (If the database changed)
+      - name: Save New Database
+        run: |
+          git config --global user.name "EndoMatch Bot"
+          git config --global user.email "bot@endomatch.ai"
+          
+          # Check if the 'faiss_production_index' folder has changed
+          if [[ -n $(git status --porcelain faiss_production_index) ]]; then
+            git add faiss_production_index
+            git commit -m "🔄 Weekly DB Update: $(date +'%Y-%m-%d')"
+            git push
+            echo "✅ Database updated and pushed to repo."
+          else
+            echo "No new trials found. No changes to save."
+          fi
