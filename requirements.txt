@@ -11,3 +11,4 @@ python-dotenv
 langchain-google-genai
 langchain-core
 langchain-huggingface
+sentence-transformers

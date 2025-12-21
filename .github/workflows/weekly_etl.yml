@@ -1,56 +1,131 @@
-name: Weekly Clinical Trials ETL
+name: Weekly Clinical Trials Update
 
 on:
+  # Run every Sunday at midnight UTC
   schedule:
-    # Runs at 00:00 UTC every Sunday
     - cron: '0 0 * * 0'
-  # Allows you to click "Run workflow" manually to test it immediately
+  
+  # Allow manual trigger for testing
   workflow_dispatch:
 
-# CRITICAL: This gives the bot permission to save the new database to your repo
 permissions:
   contents: write
 
 jobs:
-  update-database:
+  update-trials-database:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Get your code
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      # 2. Set up Python
-      - name: Set up Python 3.10
+        with:
+          clean: true
+          fetch-depth: 1
+      
+      - name: Setup Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
-      # 3. Install Dependencies
-      - name: Install Libraries
+          cache: 'pip'
+      
+      - name: Install Dependencies
         run: |
-          pip install --upgrade pip
-          # Installs requests, langchain, faiss-cpu, etc.
-          pip install -r requirements.txt
-          # Extra safety check to ensure FAISS is installed
-          pip install faiss-cpu sentence-transformers
-
-      # 4. Run your ETL Script
+          python -m pip install --upgrade pip
+          pip install requests
+          pip install langchain-community
+          pip install langchain-huggingface
+          pip install langchain-core
+          pip install faiss-cpu
+          pip install sentence-transformers
+          pip install pytest
+      
+      - name: Verify Installation
+        run: |
+          echo "=== Python Environment ==="
+          python --version
+          echo ""
+          echo "=== Installed Packages ==="
+          pip list | grep -E "(langchain|faiss|sentence|pytest|requests)"
+      
+      - name: Run Unit Tests
+        run: |
+          echo "=== Running Unit Tests ==="
+          pytest test_etl.py -v --tb=short
+        continue-on-error: false
+      
       - name: Run ETL Pipeline
-        run: python etl.py
-
-      # 5. Commit and Push Changes (If the database changed)
-      - name: Save New Database
         run: |
-          git config --global user.name "EndoMatch Bot"
-          git config --global user.email "bot@endomatch.ai"
-          
-          # Check if the 'faiss_production_index' folder has changed
-          if [[ -n $(git status --porcelain faiss_production_index) ]]; then
-            git add faiss_production_index
-            git commit -m "🔄 Weekly DB Update: $(date +'%Y-%m-%d')"
-            git push
-            echo "✅ Database updated and pushed to repo."
+          echo "=== Starting ETL Pipeline ==="
+          python etl.py
+      
+      - name: Verify Database Creation
+        run: |
+          if [ -d "faiss_production_index" ]; then
+            echo "✅ Database folder created successfully"
+            echo "📂 Contents:"
+            ls -lh faiss_production_index/
           else
-            echo "No new trials found. No changes to save."
+            echo "❌ Database folder not found!"
+            exit 1
           fi
+      
+      - name: Check Database Updates
+        id: check_changes
+        run: |
+          if [ -d "faiss_production_index" ]; then
+            echo "Checking for changes in database..."
+            git add faiss_production_index
+            
+            if git diff --cached --quiet; then
+              echo "has_changes=false" >> $GITHUB_OUTPUT
+              echo "ℹ️  No changes detected"
+            else
+              echo "has_changes=true" >> $GITHUB_OUTPUT
+              echo "✅ Changes detected - will commit"
+              echo "📊 Changed files:"
+              git diff --cached --name-only
+            fi
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "⚠️  Database folder not found"
+          fi
+      
+      - name: Commit and Push Changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git config --local user.name "GitHub Actions Bot"
+          git config --local user.email "actions@github.com"
+          
+          COMMIT_MSG="🔄 Weekly database update - $(date +'%Y-%m-%d %H:%M UTC')"
+          git commit -m "$COMMIT_MSG"
+          
+          echo "📤 Pushing changes to repository..."
+          git push
+          
+          echo "✅ Changes successfully pushed"
+      
+      - name: Workflow Summary
+        if: always()
+        run: |
+          echo "=== WORKFLOW SUMMARY ==="
+          echo "Date: $(date)"
+          echo ""
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Workflow Status: SUCCESS"
+          else
+            echo "❌ Workflow Status: FAILED"
+          fi
+          
+          echo ""
+          if [ "${{ steps.check_changes.outputs.has_changes }}" == "true" ]; then
+            echo "📊 Database Changes: YES - Changes committed and pushed"
+          else
+            echo "📊 Database Changes: NO - No updates needed"
+          fi
+          
+          echo ""
+          echo "=== Next Steps ==="
+          echo "- Check the 'faiss_production_index' folder in your repo"
+          echo "- Review the test results above"
+          echo "- Next scheduled run: Next Sunday at 00:00 UTC"

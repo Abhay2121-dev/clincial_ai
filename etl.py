@@ -1,7 +1,4 @@
-"""
-Clinical Trials ETL Pipeline
-Fetches trials from ClinicalTrials.gov and builds FAISS vector database
-"""
+
 import sys
 import requests
 
