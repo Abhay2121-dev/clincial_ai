@@ -1,4 +1,7 @@
-
+"""
+Clinical Trials ETL Pipeline
+Fetches trials from ClinicalTrials.gov and builds FAISS vector database
+"""
 import sys
 import requests
 
@@ -8,9 +11,10 @@ def fetch_trials():
     print("📡 Fetching trials from ClinicalTrials.gov...")
     
     url = "https://clinicaltrials.gov/api/v2/studies"
+    # UPDATED: Changed query term to 'endocrinology'
     params = {
-        "query.term": "endometriosis",
-        "pageSize": 5
+        "query.term": "endocrinology",
+        "pageSize": 1000
     }
     
     try:

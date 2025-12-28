@@ -37,7 +37,8 @@ def load_resources():
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash-preview-09-2025",
         temperature=0,
-        google_api_key= os.getenv('GOOGLE_API_KEY')
+        google_api_key= os.getenv("API_KEY")
+
     )
 
 @app.get("/")
@@ -48,11 +49,8 @@ def home():
 def retrieve_trials(query: str, k: int = 3):
     if not vector_db: return []
     # Strict US Filter
-    return vector_db.similarity_search(
-        query, k=k,
-        filter=lambda metadata: metadata.get("is_us_trial") is True
-    )
-
+ # Filter removed to match new ETL data structure
+    return vector_db.similarity_search(query, k=k)
 # --- STABLE SYNC RETRY ---
 @retry(
     retry=retry_if_exception_type((ClientError, ChatGoogleGenerativeAIError)),
