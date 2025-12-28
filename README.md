@@ -3,6 +3,7 @@
 > **AI-powered platform that matches endometriosis patients with relevant clinical trials using semantic search and large language models**
 
 
+<img width="1901" height="933" alt="image" src="https://github.com/user-attachments/assets/65fd6191-abf3-4552-896b-521dfd313b16" />
 
 ## 🎯 **Problem Statement**
 
